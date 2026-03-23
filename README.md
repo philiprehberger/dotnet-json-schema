@@ -1,7 +1,7 @@
 # Philiprehberger.JsonSchema
 
 [![CI](https://github.com/philiprehberger/dotnet-json-schema/actions/workflows/ci.yml/badge.svg)](https://github.com/philiprehberger/dotnet-json-schema/actions/workflows/ci.yml)
-[![NuGet](https://img.shields.io/nuget/v/Philiprehberger.JsonSchema)](https://www.nuget.org/packages/Philiprehberger.JsonSchema)
+[![NuGet](https://img.shields.io/nuget/v/Philiprehberger.JsonSchema.svg)](https://www.nuget.org/packages/Philiprehberger.JsonSchema)
 [![License](https://img.shields.io/github/license/philiprehberger/dotnet-json-schema)](LICENSE)
 
 Validate JSON documents against JSON Schema with structured error paths using System.Text.Json.

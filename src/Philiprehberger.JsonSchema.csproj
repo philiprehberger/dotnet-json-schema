@@ -9,7 +9,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
     <PackageId>Philiprehberger.JsonSchema</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Authors>Philip Rehberger</Authors>
     <Description>Validate JSON documents against JSON Schema with structured error paths using System.Text.Json.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
