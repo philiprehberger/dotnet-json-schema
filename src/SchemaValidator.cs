@@ -15,10 +15,97 @@ internal static class SchemaValidator
     /// <param name="instance">The JSON instance to validate.</param>
     /// <param name="path">The current JSON path for error reporting.</param>
     /// <param name="errors">The error collection to append to.</param>
-    internal static void Validate(JsonNode schema, JsonNode? instance, string path, List<ValidationError> errors)
+    /// <param name="rootSchema">The root schema document for resolving $ref references.</param>
+    internal static void Validate(JsonNode schema, JsonNode? instance, string path, List<ValidationError> errors, JsonNode? rootSchema = null)
     {
         if (schema is not JsonObject schemaObj)
             return;
+
+        rootSchema ??= schema;
+
+        // $ref — resolve and validate against the referenced schema
+        if (schemaObj.TryGetPropertyValue("$ref", out var refNode))
+        {
+            var refPath = refNode!.GetValue<string>();
+            var resolved = ResolveRef(rootSchema, refPath);
+            if (resolved is not null)
+            {
+                Validate(resolved, instance, path, errors, rootSchema);
+            }
+            else
+            {
+                errors.Add(new ValidationError(path, $"Could not resolve $ref '{refPath}'.", "$ref"));
+            }
+            return;
+        }
+
+        // allOf — all sub-schemas must match
+        if (schemaObj.TryGetPropertyValue("allOf", out var allOfNode) && allOfNode is JsonArray allOfArray)
+        {
+            foreach (var subSchema in allOfArray)
+            {
+                if (subSchema is not null)
+                {
+                    Validate(subSchema, instance, path, errors, rootSchema);
+                }
+            }
+        }
+
+        // anyOf — at least one sub-schema must match
+        if (schemaObj.TryGetPropertyValue("anyOf", out var anyOfNode) && anyOfNode is JsonArray anyOfArray)
+        {
+            bool anyMatch = false;
+            foreach (var subSchema in anyOfArray)
+            {
+                if (subSchema is not null)
+                {
+                    var subErrors = new List<ValidationError>();
+                    Validate(subSchema, instance, path, subErrors, rootSchema);
+                    if (subErrors.Count == 0)
+                    {
+                        anyMatch = true;
+                        break;
+                    }
+                }
+            }
+            if (!anyMatch)
+            {
+                errors.Add(new ValidationError(path, "Value does not match any of the schemas in 'anyOf'.", "anyOf"));
+            }
+        }
+
+        // oneOf — exactly one sub-schema must match
+        if (schemaObj.TryGetPropertyValue("oneOf", out var oneOfNode) && oneOfNode is JsonArray oneOfArray)
+        {
+            int matchCount = 0;
+            foreach (var subSchema in oneOfArray)
+            {
+                if (subSchema is not null)
+                {
+                    var subErrors = new List<ValidationError>();
+                    Validate(subSchema, instance, path, subErrors, rootSchema);
+                    if (subErrors.Count == 0)
+                    {
+                        matchCount++;
+                    }
+                }
+            }
+            if (matchCount != 1)
+            {
+                errors.Add(new ValidationError(path, $"Value must match exactly one schema in 'oneOf', but matched {matchCount}.", "oneOf"));
+            }
+        }
+
+        // not — must not match the sub-schema
+        if (schemaObj.TryGetPropertyValue("not", out var notNode) && notNode is not null)
+        {
+            var subErrors = new List<ValidationError>();
+            Validate(notNode, instance, path, subErrors, rootSchema);
+            if (subErrors.Count == 0)
+            {
+                errors.Add(new ValidationError(path, "Value must not match the schema in 'not'.", "not"));
+            }
+        }
 
         // type
         if (schemaObj.TryGetPropertyValue("type", out var typeNode))
@@ -83,6 +170,13 @@ internal static class SchemaValidator
                 if (!Regex.IsMatch(str, pattern))
                     errors.Add(new ValidationError(path, $"String does not match pattern '{pattern}'.", "pattern"));
             }
+
+            if (schemaObj.TryGetPropertyValue("format", out var formatNode))
+            {
+                var format = formatNode!.GetValue<string>();
+                if (!ValidateFormat(str, format))
+                    errors.Add(new ValidationError(path, $"String does not match format '{format}'.", "format"));
+            }
         }
 
         // Numeric validations
@@ -128,7 +222,7 @@ internal static class SchemaValidator
                 {
                     if (instanceObj.TryGetPropertyValue(prop.Key, out var propValue) && prop.Value is not null)
                     {
-                        Validate(prop.Value, propValue, $"{path}.{prop.Key}", errors);
+                        Validate(prop.Value, propValue, $"{path}.{prop.Key}", errors, rootSchema);
                     }
                 }
             }
@@ -151,12 +245,21 @@ internal static class SchemaValidator
                     errors.Add(new ValidationError(path, $"Array has {instanceArray.Count} items, maximum is {maxItems}.", "maxItems"));
             }
 
+            if (schemaObj.TryGetPropertyValue("uniqueItems", out var uniqueNode))
+            {
+                bool uniqueItems = uniqueNode!.GetValue<bool>();
+                if (uniqueItems && HasDuplicates(instanceArray))
+                {
+                    errors.Add(new ValidationError(path, "Array contains duplicate items but uniqueItems is true.", "uniqueItems"));
+                }
+            }
+
             // items
             if (schemaObj.TryGetPropertyValue("items", out var itemsSchema) && itemsSchema is not null)
             {
                 for (int i = 0; i < instanceArray.Count; i++)
                 {
-                    Validate(itemsSchema, instanceArray[i], $"{path}[{i}]", errors);
+                    Validate(itemsSchema, instanceArray[i], $"{path}[{i}]", errors, rootSchema);
                 }
             }
         }
@@ -208,5 +311,86 @@ internal static class SchemaValidator
         if (a is null && b is null) return true;
         if (a is null || b is null) return false;
         return a.ToJsonString() == b.ToJsonString();
+    }
+
+    private static bool ValidateFormat(string value, string format)
+    {
+        return format switch
+        {
+            "email" => ValidateEmail(value),
+            "date-time" => ValidateDateTime(value),
+            "uri" => ValidateUri(value),
+            "ipv4" => ValidateIpv4(value),
+            "ipv6" => ValidateIpv6(value),
+            _ => true // Unknown formats pass validation per JSON Schema spec
+        };
+    }
+
+    private static bool ValidateEmail(string value)
+    {
+        // Basic email validation: local@domain with at least one dot in domain
+        return Regex.IsMatch(value, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+    }
+
+    private static bool ValidateDateTime(string value)
+    {
+        return DateTimeOffset.TryParse(value, System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None, out _);
+    }
+
+    private static bool ValidateUri(string value)
+    {
+        return Uri.TryCreate(value, UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+    }
+
+    private static bool ValidateIpv4(string value)
+    {
+        if (!System.Net.IPAddress.TryParse(value, out var address))
+            return false;
+        return address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork
+            && value.Split('.').Length == 4;
+    }
+
+    private static bool ValidateIpv6(string value)
+    {
+        if (!System.Net.IPAddress.TryParse(value, out var address))
+            return false;
+        return address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6;
+    }
+
+    private static bool HasDuplicates(JsonArray array)
+    {
+        var seen = new HashSet<string>();
+        foreach (var item in array)
+        {
+            var json = item?.ToJsonString() ?? "null";
+            if (!seen.Add(json))
+                return true;
+        }
+        return false;
+    }
+
+    private static JsonNode? ResolveRef(JsonNode rootSchema, string refPath)
+    {
+        // Only support local references starting with #/
+        if (!refPath.StartsWith("#/"))
+            return null;
+
+        var segments = refPath[2..].Split('/');
+        JsonNode? current = rootSchema;
+
+        foreach (var segment in segments)
+        {
+            if (current is not JsonObject obj)
+                return null;
+
+            if (!obj.TryGetPropertyValue(segment, out var next))
+                return null;
+
+            current = next;
+        }
+
+        return current;
     }
 }
