@@ -2,12 +2,7 @@
 
 [![CI](https://github.com/philiprehberger/dotnet-json-schema/actions/workflows/ci.yml/badge.svg)](https://github.com/philiprehberger/dotnet-json-schema/actions/workflows/ci.yml)
 [![NuGet](https://img.shields.io/nuget/v/Philiprehberger.JsonSchema.svg)](https://www.nuget.org/packages/Philiprehberger.JsonSchema)
-[![GitHub release](https://img.shields.io/github/v/release/philiprehberger/dotnet-json-schema)](https://github.com/philiprehberger/dotnet-json-schema/releases)
 [![Last updated](https://img.shields.io/github/last-commit/philiprehberger/dotnet-json-schema)](https://github.com/philiprehberger/dotnet-json-schema/commits/main)
-[![License](https://img.shields.io/github/license/philiprehberger/dotnet-json-schema)](LICENSE)
-[![Bug Reports](https://img.shields.io/github/issues/philiprehberger/dotnet-json-schema/bug)](https://github.com/philiprehberger/dotnet-json-schema/issues?q=is%3Aissue+is%3Aopen+label%3Abug)
-[![Feature Requests](https://img.shields.io/github/issues/philiprehberger/dotnet-json-schema/enhancement)](https://github.com/philiprehberger/dotnet-json-schema/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement)
-[![Sponsor](https://img.shields.io/badge/sponsor-GitHub%20Sponsors-ec6cb9)](https://github.com/sponsors/philiprehberger)
 
 Validate JSON documents against JSON Schema with structured error paths using System.Text.Json.
 
@@ -183,10 +178,21 @@ dotnet build src/Philiprehberger.JsonSchema.csproj --configuration Release
 
 ## Support
 
-If you find this package useful, consider giving it a star on GitHub — it helps motivate continued maintenance and development.
+If you find this project useful:
 
-[![LinkedIn](https://img.shields.io/badge/Philip%20Rehberger-LinkedIn-0A66C2?logo=linkedin)](https://www.linkedin.com/in/philiprehberger)
-[![More packages](https://img.shields.io/badge/more-open%20source%20packages-blue)](https://philiprehberger.com/open-source-packages)
+⭐ [Star the repo](https://github.com/philiprehberger/dotnet-json-schema)
+
+🐛 [Report issues](https://github.com/philiprehberger/dotnet-json-schema/issues?q=is%3Aissue+is%3Aopen+label%3Abug)
+
+💡 [Suggest features](https://github.com/philiprehberger/dotnet-json-schema/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement)
+
+❤️ [Sponsor development](https://github.com/sponsors/philiprehberger)
+
+🌐 [All Open Source Projects](https://philiprehberger.com/open-source-packages)
+
+💻 [GitHub Profile](https://github.com/philiprehberger)
+
+🔗 [LinkedIn Profile](https://www.linkedin.com/in/philiprehberger)
 
 ## License
 
